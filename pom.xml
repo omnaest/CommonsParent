@@ -1,7 +1,8 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>org.omnaest.commons</groupId>
+	<groupId>org.omnaest.utils</groupId>
 	<artifactId>CommonsParent</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 
@@ -26,12 +27,22 @@
 	</properties>
 	<packaging>pom</packaging>
 
+	<distributionManagement>
+		<snapshotRepository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+		</snapshotRepository>
+		<repository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+		</repository>
+	</distributionManagement>
 	<build>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.0</version>
+				<version>3.8.1</version>
 				<configuration>
 					<source>1.8</source>
 					<target>1.8</target>
@@ -64,12 +75,12 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>2.8</version>
+				<version>3.2.0</version>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
-				<version>2.1.2</version>
+				<version>3.1.1</version>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -82,40 +93,12 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-deploy-plugin</artifactId>
-				<version>2.6</version>
-			</plugin>
-			<!-- <plugin> <groupId>org.apache.maven.plugins</groupId> <artifactId>maven-gpg-plugin</artifactId> 
-				<version>1.3</version> <executions> <execution> <id>sign-artifacts</id> <phase>verify</phase> 
-				<goals> <goal>sign</goal> </goals> </execution> </executions> <configuration><skip>true</skip></configuration> 
-				</plugin> -->
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>license-maven-plugin</artifactId>
-				<version>1.0</version>
-				<executions>
-					<execution>
-						<id>add-third-party</id>
-						<phase>generate-resources</phase>
-						<goals>
-							<goal>add-third-party</goal>
-						</goals>
-					</execution>
-					<execution>
-						<id>download-licenses</id>
-						<goals>
-							<goal>download-licenses</goal>
-						</goals>
-					</execution>
-				</executions>
-				<configuration>
-					<groupByLicense>true</groupByLicense>
-					<excludedScopes>test,provided,system</excludedScopes>
-				</configuration>
+				<version>2.8.2</version>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
-				<version>2.3.1</version>
+				<version>3.2.0</version>
 				<configuration>
 					<archive>
 						<manifest>
@@ -123,24 +106,84 @@
 						</manifest>
 					</archive>
 				</configuration>
-
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-dependency-plugin</artifactId>
-				<version>2.4</version>
-				<executions>
-					<execution>
-						<id>analyze</id>
-						<goals>
-							<goal>analyze-only</goal>
-						</goals>
-						<configuration>
-							<failOnWarning>false</failOnWarning>
-						</configuration>
-					</execution>
-				</executions>
 			</plugin>
 		</plugins>
 	</build>
+	<profiles>
+		<profile>
+			<id>release</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>1.6</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+						<configuration>
+							<skip>true</skip>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>license-maven-plugin</artifactId>
+						<version>2.0.0</version>
+						<executions>
+							<execution>
+								<id>add-third-party</id>
+								<phase>generate-resources</phase>
+								<goals>
+									<goal>add-third-party</goal>
+								</goals>
+							</execution>
+							<execution>
+								<id>download-licenses</id>
+								<goals>
+									<goal>download-licenses</goal>
+								</goals>
+							</execution>
+						</executions>
+						<configuration>
+							<groupByLicense>true</groupByLicense>
+							<excludedScopes>test,provided,system</excludedScopes>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-dependency-plugin</artifactId>
+						<version>3.1.2</version>
+						<executions>
+							<execution>
+								<id>analyze</id>
+								<goals>
+									<goal>analyze-only</goal>
+								</goals>
+								<configuration>
+									<failOnWarning>false</failOnWarning>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.sonatype.plugins</groupId>
+						<artifactId>nexus-staging-maven-plugin</artifactId>
+						<version>1.6.7</version>
+						<extensions>true</extensions>
+						<configuration>
+							<serverId>ossrh</serverId>
+							<nexusUrl>https://oss.sonatype.org/</nexusUrl>
+							<autoReleaseAfterClose>true</autoReleaseAfterClose>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 </project>
