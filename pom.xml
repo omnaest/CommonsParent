@@ -73,6 +73,15 @@
 
     <build>
         <plugins>
+			<plugin>
+					  <groupId>org.sonatype.central</groupId>
+					  <artifactId>central-publishing-maven-plugin</artifactId>
+					  <version>0.11.0</version>
+					  <extensions>true</extensions>
+					  <configuration>
+						<publishingServerId>ossrh</publishingServerId>
+					  </configuration>
+					</plugin>
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
@@ -149,13 +158,28 @@
                             <goal>javadoc</goal>
                         </goals>
                     </execution>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
                 </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
                 <version>3.1.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
+			<!--
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-release-plugin</artifactId>
@@ -166,7 +190,7 @@
                     <releaseProfiles>release</releaseProfiles>
                     <goals>deploy</goals>
                 </configuration>
-            </plugin>
+            </plugin>-->
 			<!--
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -249,15 +273,7 @@
                         </executions>
                     </plugin>
 					  
-					<plugin>
-					  <groupId>org.sonatype.central</groupId>
-					  <artifactId>central-publishing-maven-plugin</artifactId>
-					  <version>0.9.0</version>
-					  <extensions>true</extensions>
-					  <configuration>
-						<publishingServerId>ossrh</publishingServerId>
-					  </configuration>
-					</plugin>
+				
     <!--
                     <plugin>
                         <groupId>org.sonatype.plugins</groupId>
