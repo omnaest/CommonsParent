@@ -40,15 +40,15 @@
 			<id>ossrh</id>
 			<url>https://central.sonatype.com/repository/maven-snapshots/</url>
 		</snapshotRepository>
-		<repository>
-			<id>ossrh</id>
-			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-		</repository>
+		<!-- No release <repository> entry: central-publishing-maven-plugin (extensions=true, below) intercepts the
+		     deploy goal for releases and uploads via the Central Portal Publisher API using publishingServerId for
+		     credentials; it does not consult distributionManagement's release repository URL at all, so a
+		     release-staging entry here would be vestigial. -->
 	</distributionManagement>
 	<repositories>
 		<repository>
 			<id>ossrh</id>
-			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+			<url>https://central.sonatype.com/repository/maven-snapshots/</url>
 			<snapshots>
 				<enabled>true</enabled>
 			</snapshots>
@@ -261,18 +261,11 @@
 							</execution>
 						</executions>
 					</plugin>
-					<!--
-                    <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.6.13</version>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <serverId>ossrh</serverId>
-                            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                        </configuration>
-                    </plugin>-->
+					<!-- nexus-staging-maven-plugin (legacy OSSRH Nexus staging/close/release) removed: it targeted
+					     the decommissioned oss.sonatype.org host and is fully superseded by
+					     central-publishing-maven-plugin (declared above, extensions=true), which handles
+					     upload/validate/publish against the Central Portal for both snapshots and releases.
+					     Keeping both configured was contradictory. -->
 				</plugins>
 			</build>
 		</profile>
