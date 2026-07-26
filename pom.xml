@@ -54,6 +54,26 @@
 			</snapshots>
 		</repository>
 	</repositories>
+	<dependencyManagement>
+		<dependencies>
+			<!-- Jackson is declared by a number of Commons and downstream projects, each of which used to pin its
+			     own version - 2.8.7, 2.9.3, 2.9.4 and 2.16.2 were all in use at the same time. Importing the BOM
+			     here aligns every child on one version, keeps the artifacts of the Jackson family consistent with
+			     each other, and turns the next security advisory into a single edit in this file.
+
+			     2.18.9 is the lowest version that clears all seven Dependabot advisories open against
+			     CommonsJSONAndXML: GHSA-5jmj-h7xm-6q6v is only fixed in 2.18.9, the remaining six in 2.18.8 or
+			     earlier. Child projects that need a different version can still override this by declaring an
+			     explicit <version>, since a dependency declaration wins over imported management. -->
+			<dependency>
+				<groupId>com.fasterxml.jackson</groupId>
+				<artifactId>jackson-bom</artifactId>
+				<version>2.18.9</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 	<dependencies>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
