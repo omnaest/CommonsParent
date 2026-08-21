@@ -29,6 +29,15 @@
 		</developer>
 	</developers>
 	<properties>
+		<!-- Without these, javac and every report plugin fall back to the platform default encoding, which is Cp1252 on
+		     the Windows build machines and UTF-8 on Linux CI - so the same source produced different constants depending
+		     on where it was compiled. UTF-8 is declared rather than windows-1252 because the workspace source is already
+		     overwhelmingly UTF-8 (351 files carry multi-byte characters); the 21 files that were still Cp1252 were
+		     transcoded to UTF-8 alongside this change, so a single declaration is now correct for every child project.
+		     Note this is deliberately NOT the ISO-8859-1 that spotless-maven-plugin declares below: that setting exists
+		     to make spotless byte-preserving over files of unknown encoding, and is unrelated to how javac reads them. -->
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>17</java.version>
 		<maven.compiler.release>${java.version}</maven.compiler.release>
 		<maven.compiler.source>${java.version}</maven.compiler.source>
@@ -78,7 +87,7 @@
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
-			<version>1.18.30</version>
+			<version>1.18.46</version>
 			<scope>provided</scope>
 		</dependency>
 	</dependencies>
@@ -153,30 +162,6 @@
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.12.0</version>
-				<configuration>
-					<failOnError>false</failOnError>
-					<doclint>none</doclint>
-				</configuration>
-				<executions>
-					<execution>
-						<id>generate-javadoc</id>
-						<phase>prepare-package</phase>
-						<goals>
-							<goal>javadoc</goal>
-						</goals>
-					</execution>
-					<execution>
-						<id>attach-javadocs</id>
-						<goals>
-							<goal>jar</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
 				<version>3.4.0</version>
 				<executions>
@@ -225,6 +210,48 @@
 			<id>release</id>
 			<build>
 				<plugins>
+					<!--
+					    Javadoc runs on RELEASE only, not on every build.
+
+					    Maven Central requires a -javadoc.jar, so it has to be produced when publishing. It does
+					    not have to be produced when someone runs `mvn install` locally, and producing it there
+					    cost every build in this workspace a few seconds and roughly two hundred lines of
+					    "cannot find symbol: class *DataBuilder" errors.
+
+					    Those errors are real, not cosmetic: javadoc does not run annotation processing, so it
+					    cannot see anything Lombok generates - and hand-written code across this workspace
+					    imports those generated types by name (e.g. AnkerData.AnkerDataBuilder). With
+					    failOnError=false the build stayed green and the output was discarded, which is why it
+					    went unnoticed that the attached javadoc jar is EMPTY: 317 bytes, zero HTML files.
+
+					    Moving the executions here changes none of that - it only stops ordinary builds paying
+					    for, and printing, a failure that belongs to publishing. The empty-jar defect is
+					    untouched and still needs delombok (or an equivalent) to fix properly.
+					-->
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-javadoc-plugin</artifactId>
+						<version>3.12.0</version>
+						<configuration>
+							<failOnError>false</failOnError>
+							<doclint>none</doclint>
+						</configuration>
+						<executions>
+							<execution>
+								<id>generate-javadoc</id>
+								<phase>prepare-package</phase>
+								<goals>
+									<goal>javadoc</goal>
+								</goals>
+							</execution>
+							<execution>
+								<id>attach-javadocs</id>
+								<goals>
+									<goal>jar</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-gpg-plugin</artifactId>
