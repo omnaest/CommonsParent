@@ -38,6 +38,8 @@
 		     to make spotless byte-preserving over files of unknown encoding, and is unrelated to how javac reads them. -->
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<!-- One place, because the delombok plugin below must run the SAME lombok this compiles against. -->
+		<lombok.version>1.18.46</lombok.version>
 		<java.version>17</java.version>
 		<maven.compiler.release>${java.version}</maven.compiler.release>
 		<maven.compiler.source>${java.version}</maven.compiler.source>
@@ -87,7 +89,7 @@
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
-			<version>1.18.46</version>
+			<version>${lombok.version}</version>
 			<scope>provided</scope>
 		</dependency>
 	</dependencies>
@@ -228,6 +230,51 @@
 					    for, and printing, a failure that belongs to publishing. The empty-jar defect is
 					    untouched and still needs delombok (or an equivalent) to fix properly.
 					-->
+					<!--
+					    Delombok first, so javadoc has something it can actually read.
+
+					    Javadoc does not run annotation processing, so it cannot resolve anything Lombok
+					    generates - and code across this workspace imports those types by name, e.g.
+					    AnkerData.AnkerDataBuilder. The result was an attached -javadoc.jar of 317 bytes
+					    containing zero HTML pages, on every artifact published from here. failOnError=false kept
+					    the builds green and discarded the output, which is why it went unnoticed.
+
+					    Delombok writes plain Java with the annotations expanded; javadoc reads that instead.
+					    Proven on react4j-core-components before being put here: 317 bytes -> 3.2 MB, 0 -> 1190
+					    HTML pages, ~200 javadoc errors -> 0, with AnkerData.AnkerDataBuilder itself documented.
+
+					    addOutputDirectory=false is load-bearing. Without it the delomboked sources become a
+					    second compile root and every class is compiled twice.
+
+					    The plugin's last release is from 2021 and bundles a lombok of that vintage, so its
+					    dependency is overridden with the version this workspace compiles against.
+					-->
+					<plugin>
+						<groupId>org.projectlombok</groupId>
+						<artifactId>lombok-maven-plugin</artifactId>
+						<version>1.18.20.0</version>
+						<dependencies>
+							<dependency>
+								<groupId>org.projectlombok</groupId>
+								<artifactId>lombok</artifactId>
+								<version>${lombok.version}</version>
+							</dependency>
+						</dependencies>
+						<executions>
+							<execution>
+								<id>delombok</id>
+								<phase>generate-sources</phase>
+								<goals>
+									<goal>delombok</goal>
+								</goals>
+								<configuration>
+									<sourceDirectory>src/main/java</sourceDirectory>
+									<outputDirectory>${project.build.directory}/generated-sources/delombok</outputDirectory>
+									<addOutputDirectory>false</addOutputDirectory>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-javadoc-plugin</artifactId>
@@ -235,6 +282,7 @@
 						<configuration>
 							<failOnError>false</failOnError>
 							<doclint>none</doclint>
+							<sourcepath>${project.build.directory}/generated-sources/delombok</sourcepath>
 						</configuration>
 						<executions>
 							<execution>
