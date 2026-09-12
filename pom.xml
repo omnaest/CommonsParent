@@ -40,11 +40,24 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<!-- One place, because the delombok plugin below must run the SAME lombok this compiles against. -->
 		<lombok.version>1.18.46</lombok.version>
-		<java.version>17</java.version>
+		<java.version>21</java.version>
 		<maven.compiler.release>${java.version}</maven.compiler.release>
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
 		<main.class/>
+		<!-- Publishing is OPT-IN, deliberately fail-closed. A module inheriting this parent does NOT publish
+		     unless it sets both properties to false itself. The workspace holds both public artifacts and
+		     private Bitbucket-hosted ones, and the previous default published everything: forgetting a switch
+		     disclosed private source, which happened to CommonsStyleSupport on 2026-09-12. Inverted, forgetting
+		     a switch means a public module quietly does not publish - visible, reversible, harmless.
+		     A public module opts in with:
+		         <maven.deploy.skip>false</maven.deploy.skip>
+		         <central.skipPublishing>false</central.skipPublishing>
+		     Both are needed: maven.deploy.skip governs maven-deploy-plugin, central.skipPublishing governs
+		     central-publishing-maven-plugin, which intercepts the deploy goal via extensions=true and does not
+		     consult the former. -->
+		<maven.deploy.skip>true</maven.deploy.skip>
+		<central.skipPublishing>true</central.skipPublishing>
 	</properties>
 	<distributionManagement>
 		<snapshotRepository>
@@ -83,6 +96,21 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			<!-- JUnit is otherwise a bare literal declared independently by CommonsTest and by
+			     nodedb-persistence-testkit - those two already drifted out of sync once (5.10.2 vs 5.14.4),
+			     producing a discovery-time NoClassDefFoundError for
+			     TestInstantiationAwareExtension$ExtensionContextScope in every module depending on both.
+			     Importing the BOM here gives the JUnit version one home instead of N independently-maintained
+			     literals. 5.14.4 matches the literal version already declared by both CommonsTest and
+			     nodedb-persistence-testkit, so importing it here changes no existing consumer's resolved
+			     version - a dependency's own explicit <version> still wins over imported management. -->
+			<dependency>
+				<groupId>org.junit</groupId>
+				<artifactId>junit-bom</artifactId>
+				<version>5.14.4</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 	<dependencies>
@@ -102,7 +130,44 @@
 				<extensions>true</extensions>
 				<configuration>
 					<publishingServerId>ossrh</publishingServerId>
+					<skipPublishing>${central.skipPublishing}</skipPublishing>
 				</configuration>
+			</plugin>
+			<plugin>
+				<!-- maven-compiler-plugin below passes <proc>full</proc> unconditionally. That flag was added to
+				     javac in JDK 21 (absent on JDK 17-20, which reject it with "invalid flag: -proc:full") and is
+				     needed because JDK 23+ stopped auto-discovering annotation processors found only on the
+				     classpath (Lombok is a provided/classpath-only dependency here). Without this rule, building
+				     with an older JDK on JAVA_HOME fails with that cryptic "invalid flag" error instead of a
+				     message naming the real requirement. Measured 2026-09-06: JDK 17.0.2 javac rejects -proc:full
+				     outright, and separately cannot cross-compile to release 21 either ("release version 21 not
+				     supported") - so JDK 17 cannot build this chain at any release level once <proc>full</proc> is
+				     present, independent of the java.version property above. -->
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<version>3.4.1</version>
+				<executions>
+					<execution>
+						<id>enforce-java-version</id>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<requireJavaVersion>
+									<version>[21,)</version>
+									<message>This build requires JDK 21 or newer. maven-compiler-plugin below is
+										configured with &lt;proc&gt;full&lt;/proc&gt;, a javac flag that does not
+										exist before JDK 21 (JDK 17-20 reject it with "invalid flag: -proc:full")
+										and is required from JDK 23 onward for Lombok's classpath-discovered
+										annotation processing to run. Switch JAVA_HOME to a JDK 21+ installation
+										before building.</message>
+								</requireJavaVersion>
+							</rules>
+							<fail>true</fail>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>com.diffplug.spotless</groupId>
@@ -137,6 +202,10 @@
 					<release>${maven.compiler.release}</release>
 					<source>${maven.compiler.source}</source>
 					<target>${maven.compiler.target}</target>
+					<!-- JDK 23+ no longer runs annotation processors found only on the classpath.
+					     Lombok is a provided dependency and relies on exactly that, so without
+					     proc=full it silently generates nothing and compilation fails. -->
+					<proc>full</proc>
 				</configuration>
 			</plugin>
 			<plugin>
